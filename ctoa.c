@@ -30,6 +30,12 @@ void printDebug( const char *msg) {
 	fprintf(stderr, "%s\n", msg);
 }
 
+typedef struct _config{
+	int radius;
+	int factor;
+	int printOutLatLonEle;
+} config;
+
 /*
  *To compile this file using gcc you can type
  *gcc `xml2-config --cflags --libs` -o ctoa ctoa.c
@@ -43,7 +49,7 @@ void printDebug( const char *msg) {
  * that are siblings or children of a given xml node.
  */
 static void
-print_element_names(xmlNode * a_node) {
+print_element_names(xmlNode * a_node, const config *config) {
 
 	xmlNode *cur_node = NULL;
 	xmlNode *free_node = NULL;
@@ -59,7 +65,9 @@ print_element_names(xmlNode * a_node) {
 				attlat = xmlGetProp(cur_node, (const xmlChar *)"lat");
 				attlon = xmlGetProp(cur_node, (const xmlChar *)"lon");
 				ele = atof((const char *)cur_node->children->next->children->content);
-				//printf("Att: lat = %s \t lon = %s \t ele = %.3f\n", attlat, attlon, ele);
+				if ( config->printOutLatLonEle == 1 ) {
+					printf("Att: lat = %s \t lon = %s \t ele = %.3f\n", attlat, attlon, ele);
+				}
 				if ( ele == 89.845 ) {
 					free_node = cur_node;
 				}
@@ -71,7 +79,7 @@ print_element_names(xmlNode * a_node) {
 			//printf("b) Type: %d und String: %s und name: %s und parent: %s\n", cur_node->type, cur_node->content, cur_node->name, cur_node->parent->name);
 		}
 
-		print_element_names(cur_node->children);
+		print_element_names(cur_node->children, config);
 	}
 	xmlUnlinkNode(free_node);
 	xmlFreeNode(free_node);
@@ -86,13 +94,14 @@ int
 main(int argc, char **argv)
 {
 
+	config config = {2, 3, 0};
 	extern char *optarg;
 	extern int optind, opterr, optopt;
 	int opt;
 	char *infile = NULL, *outfile = NULL;
 
+	xmlNode *root_element;
 	xmlDoc *doc = NULL;
-	xmlNode *root_element = NULL;
 
 	/*
 	 * this initialize the library and check potential ABI mismatches
@@ -101,7 +110,7 @@ main(int argc, char **argv)
 	 */
 	LIBXML_TEST_VERSION
 
-	while ((opt = getopt(argc, argv, "i:o:r:f:")) != -1) {
+	while ((opt = getopt(argc, argv, "i:o:r:f:v")) != -1) {
 		switch (opt) {
 			case 'i': // infile
 				infile = optarg;
@@ -110,13 +119,16 @@ main(int argc, char **argv)
 				outfile = optarg;
 				break;
 			case 'r': // radius
-				//radius = optarg;
+				config.radius = atoi(optarg);
 				break;
 			case 'f': // factor
-				//factor = optarg;
+				config.factor = atoi(optarg);
+				break;
+			case 'v':
+				config.printOutLatLonEle = 1;
 				break;
 			default: // ?
-				fprintf(stderr, "Usage: %s -i <infile> -o <outfile> [-r radius] [-f factor]\n", argv[0]);
+				fprintf(stderr, "Usage: %s -i <infile> -o <outfile> [-v] [-r radius] [-f factor]\n", argv[0]);
 				exit (EXIT_FAILURE);
 				break;
 		}
@@ -133,13 +145,11 @@ main(int argc, char **argv)
 	/*Get the root element node */
 	root_element = xmlDocGetRootElement(doc);
 
-	print_element_names(root_element);
+	print_element_names(root_element, &config);
 
 	/* Save file */
 	if ( outfile != NULL ) {
 		xmlSaveFile(outfile, doc);
-	} else {
-		printf("Can't save file to \"%s\"\n", outfile);
 	}
 
 	/*free the document */
