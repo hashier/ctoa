@@ -57,9 +57,11 @@ traverse_tree(xmlNode * a_node, const config *config) {
 	xmlNode *free_node = NULL;
 	xmlChar *attlat;
 	xmlChar *attlon;
+	xmlNode *tmp_node;
 	double ele = 0;
 
 	for (cur_node = a_node; cur_node; cur_node = cur_node->next) {
+		ele = 0;
 		/*
 		 * XML_ELEMENT_NODE = 1
 		 * XML_ATTRIBUTE_NODE = 2
@@ -71,7 +73,13 @@ traverse_tree(xmlNode * a_node, const config *config) {
 			if ( (!xmlStrcmp(cur_node->name, (const xmlChar *)"trkpt")) ) {
 				attlat = xmlGetProp(cur_node, (const xmlChar *)"lat");
 				attlon = xmlGetProp(cur_node, (const xmlChar *)"lon");
-				ele = atof((const char *)cur_node->children->next->children->content);
+				for (tmp_node = cur_node->children; tmp_node; tmp_node = tmp_node->next) {
+					if ( (!xmlStrcmp(tmp_node->name, (const xmlChar *)"ele")) && (tmp_node->children) ) {
+						ele = atof((const char *)tmp_node->children->content);
+						break;
+					}
+				}
+
 				if ( config->printOutLatLonEle == 1 ) {
 					printf("Att: lat = %s \t lon = %s \t ele = %.3f\n", attlat, attlon, ele);
 				}
