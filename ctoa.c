@@ -1,9 +1,10 @@
 /**
  * synopsis: Parse a gpx file and delete all dissent elevations
  * purpose: Parse a gpx file and delete all dissent elevations
- * usage: just parse as first argument the xml file
+ * usage: just parse as first argument the xml file or use -h for more help
  * author: Christopher Loessl
- * copy: GPLv2 or later
+ * mail: cloessl@x-berg.de
+ * copyright: GPLv2 or later
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,7 +31,7 @@ void printDebug( const char *msg) {
 	fprintf(stderr, "%s\n", msg);
 }
 
-typedef struct _config{
+typedef struct _config {
 	int radius;
 	int factor;
 	int printOutLatLonEle;
@@ -42,14 +43,15 @@ typedef struct _config{
  */
 
 /**
- * print_element_names:
+ * traverse_tree:
  * @a_node: the initial xml node to consider.
+ * @config: config
  *
  * Prints the lat, lon, ele of all the xml elements
  * that are siblings or children of a given xml node.
  */
 static void
-print_element_names(xmlNode * a_node, const config *config) {
+traverse_tree(xmlNode * a_node, const config *config) {
 
 	xmlNode *cur_node = NULL;
 	xmlNode *free_node = NULL;
@@ -58,9 +60,14 @@ print_element_names(xmlNode * a_node, const config *config) {
 	double ele = 0;
 
 	for (cur_node = a_node; cur_node; cur_node = cur_node->next) {
+		/*
+		 * XML_ELEMENT_NODE = 1
+		 * XML_ATTRIBUTE_NODE = 2
+		 * XML_TEXT_NODE = 3
+		*/
+		//printf("Type: %d  String: %s  name: %s  parent: %s\n", cur_node->type, cur_node->content, cur_node->name, cur_node->parent->name);
 		if (cur_node->type == XML_ELEMENT_NODE) {
 
-			//printf("a) Type: %d und String: %s und name: %s und parent: %s\n", cur_node->type, cur_node->content, cur_node->name, cur_node->parent->name);
 			if ( (!xmlStrcmp(cur_node->name, (const xmlChar *)"trkpt")) ) {
 				attlat = xmlGetProp(cur_node, (const xmlChar *)"lat");
 				attlon = xmlGetProp(cur_node, (const xmlChar *)"lon");
@@ -74,12 +81,10 @@ print_element_names(xmlNode * a_node, const config *config) {
 				xmlFree(attlat);
 				xmlFree(attlon);
 			}
-
 		} else {
-			//printf("b) Type: %d und String: %s und name: %s und parent: %s\n", cur_node->type, cur_node->content, cur_node->name, cur_node->parent->name);
 		}
 
-		print_element_names(cur_node->children, config);
+		traverse_tree(cur_node->children, config);
 	}
 	xmlUnlinkNode(free_node);
 	xmlFreeNode(free_node);
@@ -110,8 +115,12 @@ main(int argc, char **argv)
 	 */
 	LIBXML_TEST_VERSION
 
-	while ((opt = getopt(argc, argv, "i:o:r:f:v")) != -1) {
+	while ((opt = getopt(argc, argv, "hi:o:r:f:v")) != -1) {
 		switch (opt) {
+			case 'h': // help
+				fprintf(stderr, "Usage: %s -i <infile> -o <outfile> [-v] [-r radius] [-f factor]\n", argv[0]);
+				exit (EXIT_FAILURE);
+				break;
 			case 'i': // infile
 				infile = optarg;
 				break;
@@ -145,7 +154,7 @@ main(int argc, char **argv)
 	/*Get the root element node */
 	root_element = xmlDocGetRootElement(doc);
 
-	print_element_names(root_element, &config);
+	traverse_tree(root_element, &config);
 
 	/* Save file */
 	if ( outfile != NULL ) {
