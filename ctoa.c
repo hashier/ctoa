@@ -42,6 +42,21 @@ typedef struct _config {
  *gcc `xml2-config --cflags --libs` -o ctoa ctoa.c
  */
 
+static double
+getCurrentElevation(xmlNode *trkptNode) {
+
+	xmlNode *tmp_node;
+	double ele = 0;
+
+	for (tmp_node = trkptNode->children; tmp_node; tmp_node = tmp_node->next) {
+		if ( (!xmlStrcmp(tmp_node->name, (const xmlChar *)"ele")) && (tmp_node->children) ) {
+			ele = atof((const char *)tmp_node->children->content);
+			break;
+		}
+	}
+	return ele;
+}
+
 /**
  * traverse_tree:
  * @a_node: the initial xml node to consider.
@@ -57,7 +72,6 @@ traverse_tree(xmlNode * a_node, const config *config) {
 	xmlNode *free_node = NULL;
 	xmlChar *attlat;
 	xmlChar *attlon;
-	xmlNode *tmp_node;
 	double ele = 0;
 
 	for (cur_node = a_node; cur_node; cur_node = cur_node->next) {
@@ -73,29 +87,30 @@ traverse_tree(xmlNode * a_node, const config *config) {
 			if ( (!xmlStrcmp(cur_node->name, (const xmlChar *)"trkpt")) ) {
 				attlat = xmlGetProp(cur_node, (const xmlChar *)"lat");
 				attlon = xmlGetProp(cur_node, (const xmlChar *)"lon");
-				for (tmp_node = cur_node->children; tmp_node; tmp_node = tmp_node->next) {
-					if ( (!xmlStrcmp(tmp_node->name, (const xmlChar *)"ele")) && (tmp_node->children) ) {
-						ele = atof((const char *)tmp_node->children->content);
-						break;
-					}
-				}
+
+				ele = getCurrentElevation(cur_node);
+				//printf("Ich bin aktuell: %.3f und ich bin next: %.3f\n", getCurrentElevation(cur_node), getCurrentElevation(cur_node->next));
 
 				if ( config->printOutLatLonEle == 1 ) {
 					printf("Att: lat = %s \t lon = %s \t ele = %.3f\n", attlat, attlon, ele);
 				}
+
 				if ( ele == 89.845 ) {
 					free_node = cur_node;
 				}
 				xmlFree(attlat);
 				xmlFree(attlon);
 			}
-		} else {
 		}
 
 		traverse_tree(cur_node->children, config);
 	}
-	xmlUnlinkNode(free_node);
-	xmlFreeNode(free_node);
+
+	if ( free_node != NULL) {
+		xmlUnlinkNode(free_node);
+		xmlFreeNode(free_node);
+	}
+
 }
 
 
