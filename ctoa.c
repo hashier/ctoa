@@ -15,6 +15,7 @@
 #ifdef LIBXML_TREE_ENABLED
 
 #define DEBUG
+#define MIN -8000
 
 #ifndef DEBUG
   #define printDebugMsg(msg) ((void)0)
@@ -42,19 +43,50 @@ typedef struct _config {
  *gcc `xml2-config --cflags --libs` -o ctoa ctoa.c
  */
 
+
+
 static double
 getCurrentElevation(xmlNode *trkptNode) {
 
 	xmlNode *tmp_node;
-	double ele = 0;
 
+	// Find the elevation child and data of a trkpt
 	for (tmp_node = trkptNode->children; tmp_node; tmp_node = tmp_node->next) {
 		if ( (!xmlStrcmp(tmp_node->name, (const xmlChar *)"ele")) && (tmp_node->children) ) {
-			ele = atof((const char *)tmp_node->children->content);
-			break;
+			return ( atof((const char *)tmp_node->children->content) );
 		}
 	}
-	return ele;
+	fprintf(stderr, "Worning: Found trackpoint without elevation data, are you sure this is correct?\n");
+	return MIN;
+}
+
+static double
+getPrevElevation(xmlNode *trkptNode) {
+
+	xmlNode *tmp_node;
+
+	// Just find next trkpt point and call getCurrentElevation
+	for (tmp_node = trkptNode->prev; tmp_node; tmp_node = tmp_node->prev) {
+		if ( (!xmlStrcmp(tmp_node->name, (const xmlChar *)"trkpt")) && (tmp_node->children) ) {
+			return ( getCurrentElevation( tmp_node) );
+		}
+	}
+	fprintf(stderr, "Worning: Found trackpoint without elevation data, are you sure this is correct?\n");
+	return MIN;
+}
+
+static double
+getNextElevation(xmlNode *trkptNode) {
+
+	xmlNode *tmp_node;
+
+	// Just find next trkpt point and call getCurrentElevation
+	for (tmp_node = trkptNode->next; tmp_node; tmp_node = tmp_node->next) {
+		if ( (!xmlStrcmp(tmp_node->name, (const xmlChar *)"trkpt")) && (tmp_node->children) ) {
+			return ( getCurrentElevation( tmp_node) );
+		}
+	}
+	return -1;
 }
 
 /**
@@ -89,13 +121,14 @@ traverse_tree(xmlNode * a_node, const config *config) {
 				attlon = xmlGetProp(cur_node, (const xmlChar *)"lon");
 
 				ele = getCurrentElevation(cur_node);
-				//printf("Ich bin aktuell: %.3f und ich bin next: %.3f\n", getCurrentElevation(cur_node), getCurrentElevation(cur_node->next));
 
 				if ( config->printOutLatLonEle == 1 ) {
 					printf("Att: lat = %s \t lon = %s \t ele = %.3f\n", attlat, attlon, ele);
+					//printf("Att: lat = %s \t lon = %s \t ele = %.3f - %.3f - %.3f\n", attlat, attlon, getPrevElevation(cur_node), ele, getNextElevation(cur_node));
 				}
 
 				if ( ele == 89.845 ) {
+					printf("Marked for deletion\n");
 					free_node = cur_node;
 				}
 				xmlFree(attlat);
