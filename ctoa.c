@@ -56,37 +56,48 @@ getCurrentElevation(xmlNode *trkptNode) {
 			return ( atof((const char *)tmp_node->children->content) );
 		}
 	}
-	fprintf(stderr, "Worning: Found trackpoint without elevation data, are you sure this is correct?\n");
+	fprintf(stderr, "Warning: Found trackpoint without elevation data, are you sure this is correct?\n");
 	return MIN;
 }
 
 static double
-getPrevElevation(xmlNode *trkptNode) {
+getPrevElevation(xmlNode *trkptNode, int offset) {
 
 	xmlNode *tmp_node;
+	int counter = 1;
 
 	// Just find next trkpt point and call getCurrentElevation
 	for (tmp_node = trkptNode->prev; tmp_node; tmp_node = tmp_node->prev) {
 		if ( (!xmlStrcmp(tmp_node->name, (const xmlChar *)"trkpt")) && (tmp_node->children) ) {
+			if ( counter < offset) {
+				counter++;
+				continue;
+			}
 			return ( getCurrentElevation( tmp_node) );
 		}
 	}
-	fprintf(stderr, "Worning: Found trackpoint without elevation data, are you sure this is correct?\n");
+	fprintf(stderr, "Warning: Found trackpoint without elevation data, are you sure this is correct?\n");
 	return MIN;
 }
 
 static double
-getNextElevation(xmlNode *trkptNode) {
+getNextElevation(xmlNode *trkptNode, int offset) {
 
 	xmlNode *tmp_node;
+	int counter = 1;
 
 	// Just find next trkpt point and call getCurrentElevation
 	for (tmp_node = trkptNode->next; tmp_node; tmp_node = tmp_node->next) {
 		if ( (!xmlStrcmp(tmp_node->name, (const xmlChar *)"trkpt")) && (tmp_node->children) ) {
+			if ( counter < offset) {
+				counter++;
+				continue;
+			}
 			return ( getCurrentElevation( tmp_node) );
 		}
 	}
-	return -1;
+	fprintf(stderr, "Warning: Found trackpoint without elevation data, are you sure this is correct?\n");
+	return MIN;
 }
 
 /**
@@ -125,8 +136,10 @@ traverse_tree(xmlNode * a_node, const config *config) {
 				if ( config->printOutLatLonEle == 1 ) {
 					printf("Att: lat = %s \t lon = %s \t ele = %.3f\n", attlat, attlon, ele);
 					//printf("Att: lat = %s \t lon = %s \t ele = %.3f - %.3f - %.3f\n", attlat, attlon, getPrevElevation(cur_node), ele, getNextElevation(cur_node));
+					//printf("Att: lat = %s \t lon = %s \t ele = %.3f - %.3f\n", attlat, attlon, ele, getPrevElevation(cur_node, 3));
 				}
 
+				/* delete? */
 				if ( ele == 89.845 ) {
 					printf("Marked for deletion\n");
 					free_node = cur_node;
