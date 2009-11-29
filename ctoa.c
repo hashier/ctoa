@@ -66,6 +66,9 @@ getPrevElevation(xmlNode *trkptNode, int offset) {
 	xmlNode *tmp_node;
 	int counter = 1;
 
+	if ( offset == 0 )
+		return ( getCurrentElevation( trkptNode) );
+
 	// Just find next trkpt point and call getCurrentElevation
 	for (tmp_node = trkptNode->prev; tmp_node; tmp_node = tmp_node->prev) {
 		if ( (!xmlStrcmp(tmp_node->name, (const xmlChar *)"trkpt")) && (tmp_node->children) ) {
@@ -76,7 +79,7 @@ getPrevElevation(xmlNode *trkptNode, int offset) {
 			return ( getCurrentElevation( tmp_node) );
 		}
 	}
-	fprintf(stderr, "Warning: Found trackpoint without elevation data, are you sure this is correct?\n");
+	//fprintf(stderr, "Warning: Found trackpoint without elevation data, are you sure this is correct?\n");
 	return MIN;
 }
 
@@ -85,6 +88,9 @@ getNextElevation(xmlNode *trkptNode, int offset) {
 
 	xmlNode *tmp_node;
 	int counter = 1;
+
+	if ( offset == 0 )
+		return ( getCurrentElevation( trkptNode) );
 
 	// Just find next trkpt point and call getCurrentElevation
 	for (tmp_node = trkptNode->next; tmp_node; tmp_node = tmp_node->next) {
@@ -96,7 +102,7 @@ getNextElevation(xmlNode *trkptNode, int offset) {
 			return ( getCurrentElevation( tmp_node) );
 		}
 	}
-	fprintf(stderr, "Warning: Found trackpoint without elevation data, are you sure this is correct?\n");
+	//fprintf(stderr, "Warning: Found trackpoint without elevation data, are you sure this is correct?\n");
 	return MIN;
 }
 
@@ -116,6 +122,7 @@ traverse_tree(xmlNode * a_node, const config *config) {
 	xmlChar *attlat;
 	xmlChar *attlon;
 	double ele = 0;
+	int i;
 
 	for (cur_node = a_node; cur_node; cur_node = cur_node->next) {
 		ele = 0;
@@ -140,7 +147,29 @@ traverse_tree(xmlNode * a_node, const config *config) {
 				}
 
 				/* delete? */
-				if ( ele == 89.845 ) {
+				int avg = getCurrentElevation(cur_node);
+				for ( i = 1; i < config->radius +1; i++) {
+					int tmp = getPrevElevation( cur_node, i);
+					//printf("xxxx: %d\n", tmp);
+					if ( MIN != tmp )
+						avg += tmp;
+					else {
+						avg += ((config->radius +1) - i ) * getPrevElevation( cur_node, i-1);
+						break;
+					}
+				}
+				for ( i = 1; i < config->radius +1; i++) {
+					int tmp = getNextElevation( cur_node, i);
+					//printf("yyyy: %d\n", tmp);
+					if ( MIN != tmp )
+						avg += tmp;
+					else {
+						avg += ((config->radius +1) - i ) * getNextElevation( cur_node, i-1);
+						break;
+					}
+				}
+
+				if ( ele - ( avg / (config->radius*2 +1) ) > config->factor ) {
 					printf("Marked for deletion\n");
 					free_node = cur_node;
 				}
@@ -168,7 +197,7 @@ int
 main(int argc, char **argv)
 {
 
-	config config = {2, 3, 0};
+	config config = {8, 32, 0};
 	extern char *optarg;
 	extern int optind, opterr, optopt;
 	int opt;
