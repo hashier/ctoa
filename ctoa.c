@@ -14,8 +14,9 @@
 
 #ifdef LIBXML_TREE_ENABLED
 
-#define DEBUG
 #define MIN -8000
+
+#define DEBUG
 
 #ifndef DEBUG
   #define printDebugMsg(msg) ((void)0)
@@ -169,7 +170,7 @@ traverse_tree(xmlNode * a_node, const config *config) {
 					}
 				}
 
-				if ( ele - ( avg / (config->radius*2 +1) ) > config->factor ) {
+				if ( abs( abs(ele) - abs(( avg / (config->radius*2 +1)) )) > config->factor ) {
 					printf("Marked for deletion\n");
 					free_node = cur_node;
 				}
